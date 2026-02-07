@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pico Controller Manager</title>
+  <style>
+    :root {
+      --bg: #edf2f8;
+      --card: #fff;
+      --line: #d5dfeb;
+      --text: #1f2b3a;
+      --muted: #5e6d83;
+      --accent: #0d62c9;
+      --ok: #0a8a55;
+      --warn: #b93426;
+      --drag: #fff0cf;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(circle at top left, #dce8f8, #f7fafd 62%); color: var(--text); font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    h1, h2 { margin: 0 0 10px; }
+    h1 { font-size: 1.45rem; }
+    h2 { font-size: 1rem; color: var(--muted); }
+    .meta, .small { color: var(--muted); font-size: .9rem; }
+    .small { font-size: .84rem; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 900px) { .grid.two { grid-template-columns: 1fr 1fr; } }
+    input, select { border: 1px solid var(--line); border-radius: 8px; padding: 8px; min-height: 36px; }
+    input[type="text"], input[type="password"] { min-width: 220px; }
+    button { border: 0; border-radius: 8px; padding: 9px 12px; min-height: 36px; cursor: pointer; background: #dfe8f7; font-weight: 600; }
+    button.primary { background: var(--accent); color: #fff; }
+    button.ok { background: var(--ok); color: #fff; }
+    button.warn { background: var(--warn); color: #fff; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .pill { border-radius: 999px; padding: 3px 8px; font-size: .8rem; background: #e6edf7; }
+    .pill.ok { background: #dbf4e8; color: #0e6d45; }
+    .pill.off { background: #f7e3e0; color: #8b2e24; }
+    .mono { font-family: "IBM Plex Mono", monospace; }
+    .error { color: #a52317; font-size: .88rem; }
+    ul { margin: 8px 0 0; padding-left: 18px; }
+    li { margin: 4px 0; }
+    .slot-list { list-style: none; padding: 0; margin: 8px 0 0; }
+    .slot-item { border: 1px solid var(--line); border-radius: 8px; background: #f9fcff; padding: 10px; margin-bottom: 8px; cursor: grab; }
+    .slot-item.over { background: var(--drag); border-color: #d3a039; }
+    .slot-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Pico Controller Manager</h1>
+    <div class="meta">Full pairing control, drag/drop slot order, reactive status, USB output mode, Wi-Fi credentials, and BLE panel.</div>
+  </div>
+
+  <div class="card">
+    <h2>Device Connection</h2>
+    <div class="row">
+      <label for="baseUrl">Device URL</label>
+      <input id="baseUrl" type="text" value="http://10.10.10.1">
+      <button id="saveUrlBtn">Save</button>
+      <label for="controlVia">Control via</label>
+      <select id="controlVia">
+        <option value="auto">Auto</option>
+        <option value="wifi">Wi-Fi</option>
+        <option value="ble">Bluetooth</option>
+      </select>
+      <button id="testBtn" class="primary">Test</button>
+      <button id="pollBtn" class="ok">Polling On</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <span>HTTP: <span id="httpState" class="pill off">Offline</span></span>
+      <span>BLE: <span id="bleState" class="pill off">Disconnected</span></span>
+      <span>USB: <span id="usbState" class="pill">-</span></span>
+      <span>Uptime: <span id="uptime" class="mono">-</span></span>
+      <span>Build: <span id="build" class="mono">-</span></span>
+    </div>
+    <div id="error" class="error" style="margin-top:8px"></div>
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h2>Wi-Fi STA</h2>
+      <div class="small">Current SSID: <span id="wifiSsid" class="mono">-</span> | Connected: <span id="wifiSta" class="pill">-</span></div>
+      <div class="row" style="margin-top:8px">
+        <input id="wifiSsidIn" type="text" placeholder="SSID">
+        <input id="wifiPassIn" type="password" placeholder="Password">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="wifiSetBtn" class="primary">Save Credentials</button>
+        <button id="wifiReconnectBtn">Reconnect STA</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Output Mode</h2>
+      <div class="row">
+        <select id="modeSelect">
+          <option value="xinput">xinput</option>
+          <option value="switch">switch</option>
+          <option value="dinput">dinput</option>
+          <option value="ps3">ps3</option>
+          <option value="ps4">ps4</option>
+          <option value="ps5">ps5</option>
+          <option value="hid">hid</option>
+          <option value="xboxone">xboxone</option>
+          <option value="mousekb">mousekb</option>
+        </select>
+        <button id="modeSetBtn" class="primary">Set Mode</button>
+      </div>
+      <div class="small" id="modeNow" style="margin-top:8px">Current: -</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Mouse + Keyboard Mode</h2>
+    <div class="small">Works in all output modes; sends keyboard/mouse as an extra USB HID interface.</div>
+    <div class="row" style="margin-top:8px">
+      <button id="captureBtn">Capture Desktop Input</button>
+      <button id="releaseCaptureBtn">Release Capture</button>
+      <button id="leftClickBtn">Left Click</button>
+      <button id="rightClickBtn">Right Click</button>
+      <button id="middleClickBtn">Middle Click</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input id="mkTextIn" type="text" placeholder="Type text to send">
+      <button id="mkSendTextBtn" class="primary">Send Text</button>
+    </div>
+    <div id="touchpad" style="margin-top:10px; border:1px solid var(--line); border-radius:10px; height:170px; background:#f4f8ff; display:flex; align-items:center; justify-content:center; user-select:none; touch-action:none;">
+      Touchpad: drag to move pointer, two-finger vertical drag to scroll
+    </div>
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h2>Pairing Control</h2>
+      <div class="row">
+        <button id="scanOnBtn" class="ok">Start Scan</button>
+        <button id="scanOffBtn">Stop Scan</button>
+        <button id="scanClearBtn">Clear Found</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="autoOnBtn">Auto On</button>
+        <button id="autoOffBtn">Auto Off</button>
+        <button id="showOnBtn">Show-All On</button>
+        <button id="showOffBtn">Show-All Off</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="pairListBtn">List Pairings</button>
+        <button id="pairClearBtn" class="warn">Clear Pairings</button>
+      </div>
+      <div class="small" id="btFlags" style="margin-top:8px">Scan: - | Auto: - | Show-All: -</div>
+    </div>
+
+    <div class="card">
+      <h2>BLE Panel</h2>
+      <div class="row">
+        <button id="bleConnectBtn">Connect BLE</button>
+        <button id="bleDisconnectBtn">Disconnect BLE</button>
+        <button id="bleRefreshBtn">Refresh BLE</button>
+      </div>
+      <div class="small" style="margin-top:8px">Connected controllers (BLE service):</div>
+      <ul id="bleControllers"></ul>
+    </div>
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h2>Connected Devices</h2>
+      <ul id="connectedDevicesList"></ul>
+      <h2 style="margin-top:12px">Discovered Devices</h2>
+      <ul id="devices"></ul>
+    </div>
+
+    <div class="card">
+      <h2>Paired Devices</h2>
+      <ul id="paired"></ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Controller Slots (Drag & Drop)</h2>
+    <div class="small">Drag BT slots to reorder priority/mapping.</div>
+    <ul id="slots" class="slot-list"></ul>
+  </div>
+</main>
+
+<script>
+const MODE_BY_ID = {0:"xinput",1:"hid",2:"switch",3:"dinput",4:"ps3",5:"ps4",6:"ps5",7:"xboxone",8:"mousekb"};
+const UUIDS = {
+  service: "4627c4a4-ac00-46b9-b688-afc5c1bf7f63",
+  connectedDevices: "4627c4a4-ac05-46b9-b688-afc5c1bf7f63",
+  command: "4627c4a4-ac09-46b9-b688-afc5c1bf7f63",
+};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>\"]/g, (m) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]));
+
+let baseUrl = normalizeBaseUrl(localStorage.getItem("pico_manager_url") || "http://10.10.10.1");
+let controlVia = localStorage.getItem("pico_manager_via") || "auto";
+let state = null;
+let pollEnabled = true;
+let pollTimer = null;
+let pollInFlight = false;
+let dragFromSlot = null;
+let httpOnline = false;
+let blePollCounter = 0;
+
+let bleDevice = null;
+let bleServer = null;
+let bleChars = {};
+let bleOpQueue = Promise.resolve();
+let bleManualDisconnect = false;
+let bleAutoReconnectTimer = null;
+let bleLastAutoAttemptMs = 0;
+const BLE_LAST_DEVICE_KEY = "pico_manager_ble_device_id";
+
+function bleSerialize(task) {
+  const run = bleOpQueue.then(task, task);
+  bleOpQueue = run.catch(() => {});
+  return run;
+}
+
+function clearBleAutoReconnectTimer() {
+  if (bleAutoReconnectTimer) {
+    clearTimeout(bleAutoReconnectTimer);
+    bleAutoReconnectTimer = null;
+  }
+}
+
+function scheduleBleAutoReconnect(delayMs = 1500) {
+  clearBleAutoReconnectTimer();
+  bleAutoReconnectTimer = setTimeout(() => {
+    runWrap(async () => { await bleTryAutoConnect(); });
+  }, delayMs);
+}
+
+function setError(msg) { $("error").textContent = msg || ""; }
+function setHttpOnline(on) {
+  httpOnline = !!on;
+  const e = $("httpState");
+  e.textContent = on ? "Online" : "Offline";
+  e.className = on ? "pill ok" : "pill off";
+}
+function setBleOnline(on) {
+  const e = $("bleState");
+  e.textContent = on ? "Connected" : "Disconnected";
+  e.className = on ? "pill ok" : "pill off";
+}
+function bleIsConnected() {
+  return !!(bleDevice && bleDevice.gatt && bleDevice.gatt.connected && bleServer && bleChars.command);
+}
+
+function bleAutoReconnectSupported() {
+  return !!(navigator.bluetooth && typeof navigator.bluetooth.getDevices === "function");
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function ensureStateDefaults() {
+  if (state) return;
+  state = {
+    build: "-",
+    uptime_s: 0,
+    bt: {
+      scan: false,
+      show_all: false,
+      auto: false,
+      pairing: false,
+      usb: {},
+      slots: [],
+      devices: [],
+      paired: [],
+    },
+    wifi: {
+      sta_connected: false,
+      sta_ssid: "",
+    },
+  };
+}
+
+function normalizeBaseUrl(raw) {
+  let v = String(raw || "").trim();
+  if (!v) return "http://10.10.10.1";
+  if (!/^https?:\/\//i.test(v)) {
+    v = `${location.protocol === "https:" ? "https" : "http"}://${v}`;
+  }
+  return v.replace(/\/$/, "");
+}
+
+function isMixedContentBlocked() {
+  return location.protocol === "https:" && /^http:\/\//i.test(baseUrl);
+}
+
+async function apiFetch(path, timeout = 4000) {
+  if (isMixedContentBlocked()) {
+    throw new Error("Mixed content blocked: use https:// Device URL (e.g. ngrok) or BLE transport.");
+  }
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), timeout);
+  try {
+    return await fetch(`${baseUrl}${path}`, {method: "GET", mode: "cors", cache: "no-store", signal: ac.signal});
+  } catch (e) {
+    if (e && e.name === "AbortError") {
+      throw new Error("Request timed out");
+    }
+    throw e;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function httpStatusFetch() {
+  const r = await apiFetch("/status");
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return await r.json();
+}
+
+async function httpCmd(path) {
+  const r = await apiFetch(path);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return {ok: 1};
+}
+
+async function bleCommand(path) {
+  return bleSerialize(async () => {
+    if (!bleIsConnected()) {
+      await bleTryAutoConnect().catch(() => {});
+    }
+    if (!bleIsConnected()) throw new Error("BLE not connected");
+    const payload = new TextEncoder().encode(path);
+    await bleChars.command.writeValue(payload);
+    const raw = await bleChars.command.readValue();
+    const view = new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength);
+    const text = new TextDecoder().decode(view).trim();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Invalid BLE response: ${text}`);
+    }
+  });
+}
+
+function onBleDisconnected() {
+  setBleOnline(false);
+  renderBleControllers([]);
+  bleServer = null;
+  bleChars = {};
+  if (!bleManualDisconnect) {
+    scheduleBleAutoReconnect(1200);
+  }
+}
+
+async function bleAttach(device) {
+  if (!device) throw new Error("No BLE device");
+  clearBleAutoReconnectTimer();
+
+  if (bleDevice && bleDevice !== device) {
+    bleDevice.removeEventListener("gattserverdisconnected", onBleDisconnected);
+  }
+  bleDevice = device;
+  bleDevice.removeEventListener("gattserverdisconnected", onBleDisconnected);
+  bleDevice.addEventListener("gattserverdisconnected", onBleDisconnected);
+
+  if (bleDevice.gatt.connected) {
+    bleServer = bleDevice.gatt;
+  } else {
+    let lastErr = null;
+    for (let i = 0; i < 3; i++) {
+      try {
+        bleServer = await bleDevice.gatt.connect();
+        break;
+      } catch (e) {
+        lastErr = e;
+        await sleep(250);
+      }
+    }
+    if (!bleServer) throw lastErr || new Error("BLE connect failed");
+  }
+
+  const svc = await bleServer.getPrimaryService(UUIDS.service);
+  bleChars.connectedDevices = await svc.getCharacteristic(UUIDS.connectedDevices);
+  bleChars.command = await svc.getCharacteristic(UUIDS.command);
+
+  try {
+    localStorage.setItem(BLE_LAST_DEVICE_KEY, bleDevice.id || "");
+  } catch (_) {}
+
+  setBleOnline(true);
+  await bleRefreshPanel();
+  if ($("controlVia").value !== "wifi") {
+    await refreshState(true);
+    renderAll();
+  }
+}
+
+async function bleTryAutoConnect() {
+  if (!bleAutoReconnectSupported()) {
+    return false;
+  }
+  if (bleIsConnected()) return true;
+
+  let devices = [];
+  try {
+    devices = await navigator.bluetooth.getDevices();
+  } catch (_) {
+    return false;
+  }
+  if (!devices || !devices.length) return false;
+
+  const preferredId = localStorage.getItem(BLE_LAST_DEVICE_KEY) || "";
+  const ordered = preferredId
+    ? [
+        ...devices.filter((d) => d.id === preferredId),
+        ...devices.filter((d) => d.id !== preferredId),
+      ]
+    : devices;
+
+  for (const d of ordered) {
+    try {
+      await bleAttach(d);
+      return true;
+    } catch (_) {
+      // Try next remembered device
+    }
+  }
+  return false;
+}
+
+function mergeBleState(status, slots, devices, paired) {
+  const bt = {
+    scan: !!status?.bt?.scan,
+    show_all: !!status?.bt?.show_all,
+    auto: !!status?.bt?.auto,
+    pairing: !!status?.bt?.pairing,
+    usb: status?.usb || {},
+    slots: slots?.slots || [],
+    devices: devices?.devices || state?.bt?.devices || [],
+    paired: paired?.paired || state?.bt?.paired || [],
+  };
+  return {
+    build: status?.build || state?.build || "-",
+    uptime_s: status?.uptime_s ?? state?.uptime_s ?? 0,
+    bt,
+    wifi: {
+      sta_connected: !!status?.wifi?.sta_connected,
+      sta_ssid: status?.wifi?.sta_ssid || "",
+    },
+  };
+}
+
+async function bleStatusFetch(full) {
+  const status = await bleCommand("/ble/status");
+  const slots = await bleCommand("/ble/slots");
+  let devices = null;
+  let paired = null;
+  blePollCounter++;
+  if (full || (blePollCounter % 3) === 0 || !state?.bt?.devices || !state?.bt?.paired) {
+    devices = await bleCommand("/ble/devices");
+    paired = await bleCommand("/ble/paired");
+  }
+  return mergeBleState(status, slots, devices, paired);
+}
+
+function effectiveTransport() {
+  const v = $("controlVia").value;
+  if (v === "wifi") return "wifi";
+  if (v === "ble") return "ble";
+  if (isMixedContentBlocked()) return "ble";
+  if (httpOnline) return "wifi";
+  if (bleIsConnected()) return "ble";
+  return "wifi";
+}
+
+async function runCmd(path) {
+  const via = effectiveTransport();
+  if (via === "ble") {
+    const res = await bleCommand(path);
+    if (res && res.ok === 0) throw new Error(res.err || "BLE command failed");
+    return res;
+  }
+  return await httpCmd(path);
+}
+
+let captureActive = false;
+const capturePressed = new Set();
+let mkMotionDx = 0;
+let mkMotionDy = 0;
+let mkMotionWheel = 0;
+let mkFlushBusy = false;
+let lastMouseX = null;
+let lastMouseY = null;
+const touchPoints = new Map();
+let touchLastY = null;
+
+const KEY_MAP = {
+  Escape: 0x29,
+  Enter: 0x28,
+  NumpadEnter: 0x58,
+  Backspace: 0x2A,
+  Tab: 0x2B,
+  Space: 0x2C,
+  ArrowRight: 0x4F,
+  ArrowLeft: 0x50,
+  ArrowDown: 0x51,
+  ArrowUp: 0x52,
+  Home: 0x4A,
+  End: 0x4D,
+  PageUp: 0x4B,
+  PageDown: 0x4E,
+  Insert: 0x49,
+  Delete: 0x4C,
+  F1: 0x3A, F2: 0x3B, F3: 0x3C, F4: 0x3D, F5: 0x3E, F6: 0x3F,
+  F7: 0x40, F8: 0x41, F9: 0x42, F10: 0x43, F11: 0x44, F12: 0x45,
+  F13: 0x68,
+  Minus: 0x2D, Equal: 0x2E, BracketLeft: 0x2F, BracketRight: 0x30,
+  Backslash: 0x31, Semicolon: 0x33, Quote: 0x34, Backquote: 0x35,
+  Comma: 0x36, Period: 0x37, Slash: 0x38,
+};
+
+function keyModsFromEvent(e) {
+  return (e.ctrlKey ? 0x01 : 0) |
+         (e.shiftKey ? 0x02 : 0) |
+         (e.altKey ? 0x04 : 0) |
+         (e.metaKey ? 0x08 : 0);
+}
+
+function hidCodeFromEventCode(code) {
+  if (code && code.startsWith("Key") && code.length === 4) {
+    const c = code.charCodeAt(3);
+    if (c >= 65 && c <= 90) return 0x04 + (c - 65);
+  }
+  if (code && code.startsWith("Digit") && code.length === 6) {
+    const n = code.charCodeAt(5) - 48;
+    if (n >= 1 && n <= 9) return 0x1E + (n - 1);
+    if (n === 0) return 0x27;
+  }
+  if (code && code.startsWith("Numpad")) {
+    const n = code.charCodeAt(code.length - 1) - 48;
+    if (n >= 0 && n <= 9) return 0x59 + n;
+  }
+  return KEY_MAP[code] || 0;
+}
+
+async function mkSendKey(code, mods, down) {
+  if (!code) return;
+  await runCmd(`/mk/key?code=${code}&mod=${mods}&down=${down ? 1 : 0}`);
+}
+
+async function mkSendText(text) {
+  const t = (text || "").trim();
+  if (!t) return;
+  const chunkSize = 40;
+  for (let i = 0; i < t.length; i += chunkSize) {
+    const chunk = t.slice(i, i + chunkSize);
+    await runCmd(`/mk/text?t=${encodeURIComponent(chunk)}`);
+  }
+}
+
+function mkQueueMotion(dx, dy, wheel = 0) {
+  mkMotionDx += dx || 0;
+  mkMotionDy += dy || 0;
+  mkMotionWheel += wheel || 0;
+}
+
+async function mkFlushMotion() {
+  if (mkFlushBusy) return;
+  mkFlushBusy = true;
+  try {
+    const dx = Math.max(-127, Math.min(127, Math.trunc(mkMotionDx)));
+    const dy = Math.max(-127, Math.min(127, Math.trunc(mkMotionDy)));
+    const wh = Math.max(-127, Math.min(127, Math.trunc(mkMotionWheel)));
+    mkMotionDx -= dx;
+    mkMotionDy -= dy;
+    mkMotionWheel -= wh;
+    if (dx || dy) {
+      await runCmd(`/mk/move?dx=${dx}&dy=${dy}`);
+    }
+    if (wh) {
+      await runCmd(`/mk/wheel?v=${wh}`);
+    }
+  } catch (_) {
+    // Keep UI responsive if input streaming temporarily fails.
+  } finally {
+    mkFlushBusy = false;
+  }
+}
+
+async function mkClick(button) {
+  await runCmd(`/mk/button?btn=${button}&down=1`);
+  await runCmd(`/mk/button?btn=${button}&down=0`);
+}
+
+function mapMouseButton(button) {
+  if (button === 0) return 1;
+  if (button === 1) return 3;
+  if (button === 2) return 2;
+  return 0;
+}
+
+function captureKeyDown(e) {
+  if (!captureActive) return;
+  if (e.repeat) return;
+  const code = hidCodeFromEventCode(e.code);
+  if (!code) return;
+  capturePressed.add(e.code);
+  const mods = keyModsFromEvent(e);
+  e.preventDefault();
+  runWrap(() => mkSendKey(code, mods, true));
+}
+
+function captureKeyUp(e) {
+  if (!captureActive) return;
+  if (!capturePressed.has(e.code)) return;
+  capturePressed.delete(e.code);
+  const code = hidCodeFromEventCode(e.code);
+  if (!code) return;
+  const mods = keyModsFromEvent(e);
+  e.preventDefault();
+  runWrap(() => mkSendKey(code, mods, false));
+}
+
+function captureMouseMove(e) {
+  if (!captureActive) return;
+  let dx = e.movementX || 0;
+  let dy = e.movementY || 0;
+  if (dx === 0 && dy === 0 && lastMouseX != null && lastMouseY != null) {
+    dx = e.clientX - lastMouseX;
+    dy = e.clientY - lastMouseY;
+  }
+  lastMouseX = e.clientX;
+  lastMouseY = e.clientY;
+  if (dx || dy) mkQueueMotion(dx, dy, 0);
+}
+
+function captureMouseWheel(e) {
+  if (!captureActive) return;
+  e.preventDefault();
+  const step = Math.max(-24, Math.min(24, Math.round(-e.deltaY / 8)));
+  if (step) mkQueueMotion(0, 0, step);
+}
+
+function captureMouseButton(e, down) {
+  if (!captureActive) return;
+  const btn = mapMouseButton(e.button);
+  if (!btn) return;
+  e.preventDefault();
+  runWrap(() => runCmd(`/mk/button?btn=${btn}&down=${down ? 1 : 0}`));
+}
+
+async function stopCapture() {
+  captureActive = false;
+  for (const codeStr of [...capturePressed]) {
+    const code = hidCodeFromEventCode(codeStr);
+    if (code) {
+      await mkSendKey(code, 0, false);
+    }
+  }
+  capturePressed.clear();
+  lastMouseX = null;
+  lastMouseY = null;
+}
+
+function averageTouchY() {
+  let sum = 0;
+  let count = 0;
+  for (const p of touchPoints.values()) {
+    sum += p.y;
+    count++;
+  }
+  return count ? (sum / count) : null;
+}
+
+function touchpadDown(e) {
+  const pad = $("touchpad");
+  if (pad.setPointerCapture) pad.setPointerCapture(e.pointerId);
+  touchPoints.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  if (touchPoints.size < 2) touchLastY = null;
+  e.preventDefault();
+}
+
+function touchpadMove(e) {
+  const prev = touchPoints.get(e.pointerId);
+  if (!prev) return;
+  const now = {x: e.clientX, y: e.clientY};
+  touchPoints.set(e.pointerId, now);
+  if (touchPoints.size >= 2) {
+    const avgY = averageTouchY();
+    if (avgY != null && touchLastY != null) {
+      const step = Math.max(-24, Math.min(24, Math.round((touchLastY - avgY) / 3)));
+      if (step) mkQueueMotion(0, 0, step);
+    }
+    touchLastY = avgY;
+  } else {
+    mkQueueMotion(now.x - prev.x, now.y - prev.y, 0);
+  }
+  e.preventDefault();
+}
+
+function touchpadUp(e) {
+  touchPoints.delete(e.pointerId);
+  if (touchPoints.size < 2) touchLastY = null;
+  e.preventDefault();
+}
+
+function updateTop() {
+  if (!state) return;
+  $("uptime").textContent = `${state.uptime_s ?? "-"}s`;
+  $("build").textContent = state.build || "-";
+  const mounted = !!state.bt?.usb?.mounted;
+  $("usbState").textContent = mounted ? "Mounted" : "Not mounted";
+  $("usbState").className = mounted ? "pill ok" : "pill";
+  const mode = MODE_BY_ID[state.bt?.usb?.mode] || "xinput";
+  $("modeSelect").value = mode;
+  $("modeNow").textContent = `Current: ${mode}`;
+  $("btFlags").textContent = `Scan: ${state.bt?.scan ? "On" : "Off"} | Auto: ${state.bt?.auto ? "On" : "Off"} | Show-All: ${state.bt?.show_all ? "On" : "Off"}`;
+  $("wifiSsid").textContent = state.wifi?.sta_ssid || "-";
+  const sta = !!state.wifi?.sta_connected;
+  $("wifiSta").textContent = sta ? "Connected" : "Disconnected";
+  $("wifiSta").className = sta ? "pill ok" : "pill off";
+}
+
+function renderDevices() {
+  const {connected, discovered} = splitDevicesByConnection();
+  renderConnectedDevices(connected);
+
+  const ul = $("devices");
+  ul.innerHTML = "";
+  if (!discovered.length) { ul.innerHTML = "<li>None</li>"; return; }
+  discovered.forEach((d, i) => {
+    const idx = d.idx ?? i;
+    const li = document.createElement("li");
+    li.innerHTML = `${esc(d.name || "Unknown")} <span class="mono">${esc(d.addr)}</span> (RSSI ${d.rssi}, last ${d.last_s}s)`;
+    const row = document.createElement("div"); row.className = "row";
+    const c = document.createElement("button"); c.textContent = "Connect"; c.onclick = () => runWrap(async () => { await runCmd(`/bt/connect/${idx}`); await refreshState(true); });
+    const r = document.createElement("button"); r.textContent = "Repair"; r.onclick = () => runWrap(async () => { await runCmd(`/bt/repair/${idx}`); await refreshState(true); });
+    row.appendChild(c); row.appendChild(r);
+    li.appendChild(row); ul.appendChild(li);
+  });
+}
+
+function splitDevicesByConnection() {
+  const slots = state?.bt?.slots || [];
+  const devices = state?.bt?.devices || [];
+  const connectedByAddr = new Map();
+
+  slots.forEach((s) => {
+    if (!s?.connected || !s.addr) return;
+    const key = String(s.addr).toUpperCase();
+    connectedByAddr.set(key, {
+      addr: s.addr,
+      name: s.name || "Unknown",
+      rssi: "-",
+      last_s: s.last_s ?? 0,
+      slot: s.map,
+      ble: !!s.ble,
+      idx: null,
+    });
+  });
+
+  devices.forEach((d, i) => {
+    if (!d?.addr) return;
+    const key = String(d.addr).toUpperCase();
+    const idx = d.idx ?? i;
+    if (connectedByAddr.has(key)) {
+      const row = connectedByAddr.get(key);
+      if ((!row.name || row.name === "Unknown") && d.name) row.name = d.name;
+      if (d.rssi != null) row.rssi = d.rssi;
+      if (d.last_s != null) row.last_s = d.last_s;
+      row.idx = idx;
+    }
+  });
+
+  const connected = [...connectedByAddr.values()].sort((a, b) => (a.slot ?? 99) - (b.slot ?? 99));
+  const discovered = [];
+  devices.forEach((d, i) => {
+    if (!d?.addr) return;
+    const key = String(d.addr).toUpperCase();
+    if (connectedByAddr.has(key) || d.connected) return;
+    discovered.push({...d, idx: d.idx ?? i});
+  });
+  return {connected, discovered};
+}
+
+function renderConnectedDevices(list) {
+  const ul = $("connectedDevicesList");
+  ul.innerHTML = "";
+  if (!list.length) {
+    ul.innerHTML = "<li>None</li>";
+    return;
+  }
+  list.forEach((d) => {
+    const li = document.createElement("li");
+    const slotText = Number.isFinite(d.slot) ? `Slot ${d.slot + 1}` : "Connected";
+    li.innerHTML = `<strong>${slotText}</strong>: ${esc(d.name || "Unknown")} <span class="mono">${esc(d.addr)}</span> (${d.ble ? "BLE" : "Classic"}, RSSI ${d.rssi}, last ${d.last_s}s)`;
+    ul.appendChild(li);
+  });
+}
+
+function renderPaired() {
+  const ul = $("paired");
+  ul.innerHTML = "";
+  const arr = state?.bt?.paired || [];
+  if (!arr.length) { ul.innerHTML = "<li>None</li>"; return; }
+  arr.forEach((p) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="mono">${esc(p.addr)}</span> (type ${p.type})`;
+    ul.appendChild(li);
+  });
+}
+
+function renderSlots() {
+  const list = $("slots");
+  list.innerHTML = "";
+  const slots = [...(state?.bt?.slots || [])].sort((a,b) => (a.map - b.map) || (a.id - b.id));
+  if (!slots.length) { list.innerHTML = "<li>None</li>"; return; }
+  slots.forEach((s) => {
+    const li = document.createElement("li");
+    li.className = "slot-item";
+    li.draggable = true;
+    li.dataset.slotId = String(s.id);
+    const name = (s.name || "").trim() || "Unknown";
+    li.innerHTML = `<div class="slot-top"><strong>Slot ${s.map + 1}: ${s.connected ? esc(name) : "Empty"}</strong><span class="pill ${s.connected ? "ok" : ""}">${s.connected ? "Connected" : "Empty"}</span></div><div class="small">${s.connected ? `${s.ble ? "BLE" : "Classic"} ${esc(s.addr)} | last ${s.last_s}s` : "No controller"}</div>`;
+    li.addEventListener("dragstart", () => { dragFromSlot = Number(li.dataset.slotId); });
+    li.addEventListener("dragover", (e) => { e.preventDefault(); li.classList.add("over"); });
+    li.addEventListener("dragleave", () => li.classList.remove("over"));
+    li.addEventListener("drop", (e) => {
+      e.preventDefault();
+      li.classList.remove("over");
+      runWrap(() => reorder(dragFromSlot, Number(li.dataset.slotId)));
+    });
+    list.appendChild(li);
+  });
+}
+
+async function reorder(from, to) {
+  if (from == null || to == null || from === to) return;
+  if (to > from) {
+    for (let i = from; i < to; i++) await runCmd(`/bt/order/${i}/down`);
+  } else {
+    for (let i = from; i > to; i--) await runCmd(`/bt/order/${i}/up`);
+  }
+  await refreshState(true);
+}
+
+function renderAll() { updateTop(); renderDevices(); renderPaired(); renderSlots(); }
+
+async function refreshState(full) {
+  const via = $("controlVia").value;
+  if (via === "wifi") {
+    if (isMixedContentBlocked()) {
+      throw new Error("Wi-Fi transport blocked by HTTPS mixed-content policy. Use BLE or set Device URL to https.");
+    }
+    state = await httpStatusFetch();
+    setHttpOnline(true);
+    return;
+  }
+  if (via === "ble") {
+    if (!bleIsConnected()) {
+      await bleTryAutoConnect().catch(() => {});
+    }
+    if (!bleIsConnected()) {
+      ensureStateDefaults();
+      return;
+    }
+    state = await bleStatusFetch(full);
+    return;
+  }
+  if (isMixedContentBlocked()) {
+    if (!bleIsConnected()) {
+      await bleTryAutoConnect().catch(() => {});
+    }
+    if (!bleIsConnected()) {
+      ensureStateDefaults();
+      return;
+    }
+    state = await bleStatusFetch(full);
+    return;
+  }
+  try {
+    state = await httpStatusFetch();
+    setHttpOnline(true);
+  } catch (e) {
+    setHttpOnline(false);
+    if (!bleIsConnected()) throw e;
+    state = await bleStatusFetch(full);
+  }
+}
+
+async function pollTick() {
+  if (pollInFlight) return;
+  pollInFlight = true;
+  try {
+    if (!bleIsConnected() && (effectiveTransport() !== "wifi")) {
+      const now = Date.now();
+      if ((now - bleLastAutoAttemptMs) > 5000) {
+        bleLastAutoAttemptMs = now;
+        await bleTryAutoConnect().catch(() => {});
+      }
+    }
+    if (captureActive && effectiveTransport() === "ble") {
+      setBleOnline(bleIsConnected());
+      return;
+    }
+    await refreshState(false);
+    renderAll();
+    if (!bleIsConnected() && (effectiveTransport() === "ble" || isMixedContentBlocked())) {
+      if (!bleAutoReconnectSupported()) {
+        setError("Auto BLE reconnect is not supported in this browser. Use Connect BLE after each reload.");
+      } else {
+        setError("Waiting for BLE reconnect...");
+      }
+    } else {
+      setError("");
+    }
+    if (bleIsConnected()) {
+      await bleRefreshPanel().catch(() => {});
+    }
+  } catch (e) {
+    if (!httpOnline) setHttpOnline(false);
+    setError(String(e));
+  } finally {
+    pollInFlight = false;
+  }
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollEnabled = true;
+  $("pollBtn").textContent = "Polling On";
+  $("pollBtn").className = "ok";
+  pollTick();
+  pollTimer = setInterval(pollTick, 1200);
+}
+
+function stopPolling() {
+  pollEnabled = false;
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = null;
+  $("pollBtn").textContent = "Polling Off";
+  $("pollBtn").className = "warn";
+}
+
+async function runWrap(fn) {
+  try { await fn(); setError(""); } catch (e) { setError(String(e)); }
+}
+
+function parseBleControllers(view) {
+  const out = [];
+  const len = 16;
+  const hex2 = (v) => v.toString(16).toUpperCase().padStart(2, "0");
+  for (let off = 0; off + len <= view.byteLength; off += len) {
+    const idx = view.getUint8(off + 0);
+    const b = new Uint8Array(view.buffer, view.byteOffset + off + 1, 6);
+    const addr = [...b].map(hex2).join(":");
+    const vid = view.getUint16(off + 7, true);
+    const pid = view.getUint16(off + 9, true);
+    const st = view.getUint8(off + 11);
+    out.push({idx, addr, vid, pid, st});
+  }
+  return out.filter((x) => x.st !== 0);
+}
+
+function renderBleControllers(items) {
+  const ul = $("bleControllers");
+  ul.innerHTML = "";
+  if (!items.length) { ul.innerHTML = "<li>None</li>"; return; }
+  items.forEach((it) => {
+    const li = document.createElement("li");
+    li.innerHTML = `Slot ${it.idx}: <span class="mono">${it.addr}</span> (VID:PID ${it.vid.toString(16).padStart(4,"0")}:${it.pid.toString(16).padStart(4,"0")})`;
+    ul.appendChild(li);
+  });
+}
+
+async function bleConnect() {
+  const device = await navigator.bluetooth.requestDevice({
+    filters: [{ services: [UUIDS.service] }],
+    optionalServices: [UUIDS.service]
+  });
+  bleManualDisconnect = false;
+  await bleAttach(device);
+}
+
+function bleDisconnect() {
+  bleManualDisconnect = true;
+  clearBleAutoReconnectTimer();
+  if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+  setBleOnline(false);
+  renderBleControllers([]);
+  bleServer = null;
+  bleChars = {};
+  setTimeout(() => { bleManualDisconnect = false; }, 400);
+}
+
+async function bleRefreshPanel() {
+  if (!bleIsConnected()) return;
+  const raw = await bleSerialize(async () => bleChars.connectedDevices.readValue());
+  renderBleControllers(parseBleControllers(raw));
+}
+
+function bind() {
+  $("baseUrl").value = baseUrl;
+  $("controlVia").value = controlVia;
+
+  $("saveUrlBtn").onclick = () => {
+    baseUrl = normalizeBaseUrl($("baseUrl").value);
+    $("baseUrl").value = baseUrl;
+    localStorage.setItem("pico_manager_url", baseUrl);
+    if (isMixedContentBlocked()) {
+      setError("HTTPS page cannot call http:// device URL. Use https:// tunnel URL or BLE transport.");
+    } else {
+      setError("");
+    }
+  };
+  $("controlVia").onchange = () => {
+    controlVia = $("controlVia").value;
+    localStorage.setItem("pico_manager_via", controlVia);
+    runWrap(async () => {
+      if (controlVia === "ble" || controlVia === "auto") {
+        await bleTryAutoConnect().catch(() => {});
+      }
+      await refreshState(true);
+      renderAll();
+    });
+  };
+  $("testBtn").onclick = () => runWrap(async () => { await refreshState(true); renderAll(); });
+  $("pollBtn").onclick = () => pollEnabled ? stopPolling() : startPolling();
+
+  $("modeSetBtn").onclick = () => runWrap(async () => {
+    const resp = await runCmd(`/mode/${$("modeSelect").value}`);
+    setError(resp?.reboot ? "Mode switch requested; device will reboot."
+                          : "Mode switch requested.");
+  });
+
+  $("captureBtn").onclick = () => runWrap(async () => {
+    captureActive = true;
+  });
+  $("releaseCaptureBtn").onclick = () => runWrap(stopCapture);
+  $("leftClickBtn").onclick = () => runWrap(() => mkClick(1));
+  $("rightClickBtn").onclick = () => runWrap(() => mkClick(2));
+  $("middleClickBtn").onclick = () => runWrap(() => mkClick(3));
+  $("mkSendTextBtn").onclick = () => runWrap(async () => {
+    await mkSendText($("mkTextIn").value || "");
+    $("mkTextIn").value = "";
+  });
+
+  const pad = $("touchpad");
+  pad.addEventListener("pointerdown", touchpadDown);
+  pad.addEventListener("pointermove", touchpadMove);
+  pad.addEventListener("pointerup", touchpadUp);
+  pad.addEventListener("pointercancel", touchpadUp);
+  pad.addEventListener("pointerleave", touchpadUp);
+
+  $("scanOnBtn").onclick = () => runWrap(async () => { await runCmd("/bt/scan/1"); await refreshState(true); renderAll(); });
+  $("scanOffBtn").onclick = () => runWrap(async () => { await runCmd("/bt/scan/0"); await refreshState(true); renderAll(); });
+  $("scanClearBtn").onclick = () => runWrap(async () => { await runCmd("/bt/scan/clear"); await refreshState(true); renderAll(); });
+  $("autoOnBtn").onclick = () => runWrap(async () => { await runCmd("/bt/autoconnect/1"); await refreshState(true); renderAll(); });
+  $("autoOffBtn").onclick = () => runWrap(async () => { await runCmd("/bt/autoconnect/0"); await refreshState(true); renderAll(); });
+  $("showOnBtn").onclick = () => runWrap(async () => { await runCmd("/bt/showall/1"); await refreshState(true); renderAll(); });
+  $("showOffBtn").onclick = () => runWrap(async () => { await runCmd("/bt/showall/0"); await refreshState(true); renderAll(); });
+  $("pairListBtn").onclick = () => runWrap(async () => { await runCmd("/bt/listpair"); await refreshState(true); renderAll(); });
+  $("pairClearBtn").onclick = () => runWrap(async () => { await runCmd("/bt/clearpair"); await refreshState(true); renderAll(); });
+
+  $("wifiSetBtn").onclick = () => runWrap(async () => {
+    const ssid = encodeURIComponent($("wifiSsidIn").value || "");
+    const pass = encodeURIComponent($("wifiPassIn").value || "");
+    await runCmd(`/wifi/set?ssid=${ssid}&pass=${pass}`);
+    await refreshState(true);
+    renderAll();
+  });
+  $("wifiReconnectBtn").onclick = () => runWrap(async () => {
+    await runCmd("/wifi/reconnect");
+    await refreshState(true);
+    renderAll();
+  });
+
+  $("bleConnectBtn").onclick = () => runWrap(bleConnect);
+  $("bleDisconnectBtn").onclick = bleDisconnect;
+  $("bleRefreshBtn").onclick = () => runWrap(async () => {
+    await bleRefreshPanel();
+    if ($("controlVia").value !== "wifi") {
+      await refreshState(true);
+      renderAll();
+    }
+  });
+
+  window.addEventListener("keydown", captureKeyDown, {passive: false});
+  window.addEventListener("keyup", captureKeyUp, {passive: false});
+  window.addEventListener("mousemove", captureMouseMove, {passive: true});
+  window.addEventListener("wheel", captureMouseWheel, {passive: false});
+  window.addEventListener("mousedown", (e) => captureMouseButton(e, true), {passive: false});
+  window.addEventListener("mouseup", (e) => captureMouseButton(e, false), {passive: false});
+}
+
+bind();
+startPolling();
+runWrap(async () => { await bleTryAutoConnect(); });
+setInterval(() => { mkFlushMotion(); }, 20);
+</script>
+</body>
+</html>
