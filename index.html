@@ -18,19 +18,20 @@
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: radial-gradient(circle at top left, #dce8f8, #f7fafd 62%); color: var(--text); font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
-    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
-    h1, h2 { margin: 0 0 10px; }
+    main { max-width: 1160px; margin: 0 auto; padding: 10px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+    h1, h2 { margin: 0 0 8px; }
     h1 { font-size: 1.45rem; }
     h2 { font-size: 1rem; color: var(--muted); }
-    .meta, .small { color: var(--muted); font-size: .9rem; }
+    .meta, .small { color: var(--muted); font-size: .85rem; }
     .small { font-size: .84rem; }
-    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
     @media (min-width: 900px) { .grid.two { grid-template-columns: 1fr 1fr; } }
-    input, select { border: 1px solid var(--line); border-radius: 8px; padding: 8px; min-height: 36px; }
+    @media (min-width: 1100px) { .grid.three { grid-template-columns: 1fr 1fr 1fr; } }
+    input, select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-height: 32px; }
     input[type="text"], input[type="password"] { min-width: 220px; }
-    button { border: 0; border-radius: 8px; padding: 9px 12px; min-height: 36px; cursor: pointer; background: #dfe8f7; font-weight: 600; }
+    button { border: 0; border-radius: 8px; padding: 7px 10px; min-height: 32px; cursor: pointer; background: #dfe8f7; font-weight: 600; }
     button.primary { background: var(--accent); color: #fff; }
     button.ok { background: var(--ok); color: #fff; }
     button.warn { background: var(--warn); color: #fff; }
@@ -46,6 +47,12 @@
     .slot-item { border: 1px solid var(--line); border-radius: 8px; background: #f9fcff; padding: 10px; margin-bottom: 8px; cursor: grab; }
     .slot-item.over { background: var(--drag); border-color: #d3a039; }
     .slot-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .logbox { border: 1px solid var(--line); border-radius: 8px; background: #f7fbff; max-height: 220px; overflow: auto; padding: 8px; font-size: .8rem; line-height: 1.35; }
+    .pads { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    @media (min-width: 900px) { .pads { grid-template-columns: 1fr 1fr; } }
+    .pad { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #f9fcff; }
+    .pad h3 { margin: 0 0 6px; font-size: .95rem; }
+    .pad .row button { padding: 5px 8px; min-height: 28px; font-size: .82rem; }
   </style>
 </head>
 <body>
@@ -56,19 +63,68 @@
   </div>
 
   <div class="card">
-    <h2>Device Connection</h2>
-    <div class="row">
-      <label for="baseUrl">Device URL</label>
-      <input id="baseUrl" type="text" value="http://10.10.10.1">
-      <button id="saveUrlBtn">Save</button>
-      <label for="controlVia">Control via</label>
-      <select id="controlVia">
-        <option value="auto">Auto</option>
-        <option value="wifi">Wi-Fi</option>
-        <option value="ble">Bluetooth</option>
-      </select>
-      <button id="testBtn" class="primary">Test</button>
-      <button id="pollBtn" class="ok">Polling On</button>
+    <h2>Connection + Transport</h2>
+    <div class="grid three">
+      <div>
+        <div class="row">
+          <label for="baseUrl">Device URL</label>
+          <input id="baseUrl" type="text" value="http://10.10.10.1">
+          <button id="saveUrlBtn">Save</button>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <label for="controlVia">Control via</label>
+          <select id="controlVia">
+            <option value="auto">Auto</option>
+            <option value="wifi">Wi-Fi</option>
+            <option value="ble">Bluetooth</option>
+          </select>
+          <button id="testBtn" class="primary">Test</button>
+          <button id="pollBtn" class="ok">Polling On</button>
+        </div>
+      </div>
+      <div>
+        <div class="row">
+          <select id="modeSelect">
+            <option value="xinput">xinput</option>
+            <option value="switch">switch</option>
+            <option value="dinput">dinput</option>
+            <option value="ps3">ps3</option>
+            <option value="ps4">ps4</option>
+            <option value="ps5">ps5</option>
+            <option value="hid">hid</option>
+            <option value="xboxone">xboxone</option>
+          </select>
+          <button id="modeSetBtn" class="primary">Set Mode</button>
+          <button id="usbWakeBtn">Wake Host</button>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <span>Switch AB/XY: <span id="switchSwapState" class="pill">-</span></span>
+          <button id="swapOnBtn">Swap On</button>
+          <button id="swapOffBtn">Swap Off</button>
+        </div>
+        <div class="small" id="modeNow" style="margin-top:6px">Current: -</div>
+      </div>
+      <div>
+        <div class="small">Current SSID: <span id="wifiSsid" class="mono">-</span> | Connected: <span id="wifiSta" class="pill">-</span></div>
+        <div class="row" style="margin-top:6px">
+          <input id="wifiSsidIn" type="text" placeholder="SSID">
+          <input id="wifiPassIn" type="password" placeholder="Password">
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button id="wifiSetBtn" class="primary">Save Wi-Fi</button>
+          <button id="wifiReconnectBtn">Reconnect STA</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--line);">
+      <div class="row">
+        <strong>BLE Connection</strong>
+        <button id="bleConnectBtn">Connect BLE</button>
+        <button id="bleDisconnectBtn">Disconnect BLE</button>
+        <button id="bleRefreshBtn">Refresh BLE</button>
+      </div>
+      <div class="small" style="margin-top:6px">Connected controllers (BLE service):</div>
+      <ul id="bleControllers"></ul>
     </div>
     <div class="row" style="margin-top:8px">
       <span>HTTP: <span id="httpState" class="pill off">Offline</span></span>
@@ -76,42 +132,9 @@
       <span>USB: <span id="usbState" class="pill">-</span></span>
       <span>Uptime: <span id="uptime" class="mono">-</span></span>
       <span>Build: <span id="build" class="mono">-</span></span>
+      <span id="lastUpdate" class="small">Last update: -</span>
     </div>
-    <div id="error" class="error" style="margin-top:8px"></div>
-  </div>
-
-  <div class="grid two">
-    <div class="card">
-      <h2>Wi-Fi STA</h2>
-      <div class="small">Current SSID: <span id="wifiSsid" class="mono">-</span> | Connected: <span id="wifiSta" class="pill">-</span></div>
-      <div class="row" style="margin-top:8px">
-        <input id="wifiSsidIn" type="text" placeholder="SSID">
-        <input id="wifiPassIn" type="password" placeholder="Password">
-      </div>
-      <div class="row" style="margin-top:8px">
-        <button id="wifiSetBtn" class="primary">Save Credentials</button>
-        <button id="wifiReconnectBtn">Reconnect STA</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Output Mode</h2>
-      <div class="row">
-        <select id="modeSelect">
-          <option value="xinput">xinput</option>
-          <option value="switch">switch</option>
-          <option value="dinput">dinput</option>
-          <option value="ps3">ps3</option>
-          <option value="ps4">ps4</option>
-          <option value="ps5">ps5</option>
-          <option value="hid">hid</option>
-          <option value="xboxone">xboxone</option>
-          <option value="mousekb">mousekb</option>
-        </select>
-        <button id="modeSetBtn" class="primary">Set Mode</button>
-      </div>
-      <div class="small" id="modeNow" style="margin-top:8px">Current: -</div>
-    </div>
+    <div id="error" class="error" style="margin-top:6px"></div>
   </div>
 
   <div class="card">
@@ -133,7 +156,20 @@
     </div>
   </div>
 
-  <div class="grid two">
+  <div class="card">
+    <h2>Wake-on-LAN</h2>
+    <div class="row">
+      <input id="wolNameIn" type="text" placeholder="Machine name">
+      <input id="wolMacIn" type="text" placeholder="AA:BB:CC:DD:EE:FF">
+      <button id="wolAddBtn" class="primary">Add Machine</button>
+      <button id="wolSendFirstBtn">Send WOL (First)</button>
+      <button id="wolWakeBtn">Wake Host (F13 + WOL)</button>
+    </div>
+    <div class="small" style="margin-top:8px">Guide + LT + RT also sends F13 and WOL to the first machine.</div>
+    <ul id="wolList"></ul>
+  </div>
+
+  <div class="grid">
     <div class="card">
       <h2>Pairing Control</h2>
       <div class="row">
@@ -153,17 +189,6 @@
       </div>
       <div class="small" id="btFlags" style="margin-top:8px">Scan: - | Auto: - | Show-All: -</div>
     </div>
-
-    <div class="card">
-      <h2>BLE Panel</h2>
-      <div class="row">
-        <button id="bleConnectBtn">Connect BLE</button>
-        <button id="bleDisconnectBtn">Disconnect BLE</button>
-        <button id="bleRefreshBtn">Refresh BLE</button>
-      </div>
-      <div class="small" style="margin-top:8px">Connected controllers (BLE service):</div>
-      <ul id="bleControllers"></ul>
-    </div>
   </div>
 
   <div class="grid two">
@@ -177,6 +202,8 @@
     <div class="card">
       <h2>Paired Devices</h2>
       <ul id="paired"></ul>
+      <h2 style="margin-top:10px">Wi-Fi Clients</h2>
+      <ul id="wifiClients"></ul>
     </div>
   </div>
 
@@ -185,15 +212,34 @@
     <div class="small">Drag BT slots to reorder priority/mapping.</div>
     <ul id="slots" class="slot-list"></ul>
   </div>
+
+  <div class="card">
+    <h2>Hosted UI Controls</h2>
+    <div class="small">Quick virtual button taps for C1-C4 (same endpoints as built-in page).</div>
+    <div id="controllerPads" class="pads" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Live Logs</h2>
+      <div class="row">
+        <button id="logPauseBtn">Pause</button>
+        <button id="logClearBtn">Clear</button>
+      </div>
+    </div>
+    <div id="logMeta" class="small">Logs stream from `/status` (Wi-Fi transport).</div>
+    <div id="logBox" class="logbox mono" style="margin-top:8px"></div>
+  </div>
 </main>
 
 <script>
-const MODE_BY_ID = {0:"xinput",1:"hid",2:"switch",3:"dinput",4:"ps3",5:"ps4",6:"ps5",7:"xboxone",8:"mousekb"};
+const MODE_BY_ID = {0:"xinput",1:"hid",2:"switch",3:"dinput",4:"ps3",5:"ps4",6:"ps5",7:"xboxone",8:"xinput"};
 const UUIDS = {
   service: "4627c4a4-ac00-46b9-b688-afc5c1bf7f63",
   connectedDevices: "4627c4a4-ac05-46b9-b688-afc5c1bf7f63",
   command: "4627c4a4-ac09-46b9-b688-afc5c1bf7f63",
 };
+const BLE_NAME_PREFIXES = ["WiCaTS", "pico_w_xinput", "Bluepad32", "Pico W"];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>\"]/g, (m) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]));
 
@@ -206,6 +252,7 @@ let pollInFlight = false;
 let dragFromSlot = null;
 let httpOnline = false;
 let blePollCounter = 0;
+let logsPaused = false;
 
 let bleDevice = null;
 let bleServer = null;
@@ -215,6 +262,16 @@ let bleManualDisconnect = false;
 let bleAutoReconnectTimer = null;
 let bleLastAutoAttemptMs = 0;
 const BLE_LAST_DEVICE_KEY = "pico_manager_ble_device_id";
+const LOG_STORE_KEY = "pico_manager_logs_v2";
+const LOG_MAX = 2000;
+const LOG_RENDER_MAX = 220;
+let logLines = [];
+let lastLogSeq = 0;
+const VIRTUAL_BUTTONS = [
+  ["A", 0], ["B", 1], ["X", 2], ["Y", 3], ["LB", 4], ["RB", 5],
+  ["LT", 6], ["RT", 7], ["Back", 8], ["Start", 9], ["LS", 10], ["RS", 11],
+  ["DPad Up", 12], ["DPad Down", 13], ["DPad Left", 14], ["DPad Right", 15], ["Home", 16],
+];
 
 function bleSerialize(task) {
   const run = bleOpQueue.then(task, task);
@@ -264,6 +321,8 @@ function ensureStateDefaults() {
   if (state) return;
   state = {
     build: "-",
+    log_first_seq: 0,
+    logs: [],
     uptime_s: 0,
     bt: {
       scan: false,
@@ -276,9 +335,15 @@ function ensureStateDefaults() {
       paired: [],
     },
     wifi: {
+      ap: false,
+      clients: [],
       sta_connected: false,
       sta_ssid: "",
     },
+    wol: {
+      machines: [],
+    },
+    controllers: [],
   };
 }
 
@@ -444,12 +509,20 @@ function mergeBleState(status, slots, devices, paired) {
   };
   return {
     build: status?.build || state?.build || "-",
+    log_first_seq: state?.log_first_seq || 0,
+    logs: state?.logs || [],
     uptime_s: status?.uptime_s ?? state?.uptime_s ?? 0,
     bt,
     wifi: {
+      ap: state?.wifi?.ap || false,
+      clients: state?.wifi?.clients || [],
       sta_connected: !!status?.wifi?.sta_connected,
       sta_ssid: status?.wifi?.sta_ssid || "",
     },
+    wol: {
+      machines: status?.wol?.machines || state?.wol?.machines || [],
+    },
+    controllers: state?.controllers || [],
   };
 }
 
@@ -717,11 +790,15 @@ function updateTop() {
   const mode = MODE_BY_ID[state.bt?.usb?.mode] || "xinput";
   $("modeSelect").value = mode;
   $("modeNow").textContent = `Current: ${mode}`;
+  const swap = !!state.bt?.usb?.switch_swap;
+  $("switchSwapState").textContent = swap ? "On" : "Off";
+  $("switchSwapState").className = swap ? "pill ok" : "pill";
   $("btFlags").textContent = `Scan: ${state.bt?.scan ? "On" : "Off"} | Auto: ${state.bt?.auto ? "On" : "Off"} | Show-All: ${state.bt?.show_all ? "On" : "Off"}`;
   $("wifiSsid").textContent = state.wifi?.sta_ssid || "-";
   const sta = !!state.wifi?.sta_connected;
   $("wifiSta").textContent = sta ? "Connected" : "Disconnected";
   $("wifiSta").className = sta ? "pill ok" : "pill off";
+  $("lastUpdate").textContent = `Last update: ${new Date().toLocaleTimeString()}`;
 }
 
 function renderDevices() {
@@ -813,6 +890,161 @@ function renderPaired() {
   });
 }
 
+function renderWiFiClients() {
+  const ul = $("wifiClients");
+  ul.innerHTML = "";
+  if (!state?.wifi?.ap) {
+    ul.innerHTML = "<li>AP not started</li>";
+    return;
+  }
+  const arr = state?.wifi?.clients || [];
+  if (!arr.length) {
+    ul.innerHTML = "<li>None</li>";
+    return;
+  }
+  arr.forEach((c) => {
+    const li = document.createElement("li");
+    li.innerHTML = `${esc(c.mac)} - ${esc(c.ip)} (last ${c.last_s}s)`;
+    ul.appendChild(li);
+  });
+}
+
+function renderWol() {
+  const ul = $("wolList");
+  ul.innerHTML = "";
+  const arr = state?.wol?.machines || [];
+  if (!arr.length) {
+    ul.innerHTML = "<li>None</li>";
+    return;
+  }
+  arr.forEach((m, i) => {
+    const li = document.createElement("li");
+    const displayName = m.name || ("Machine " + (i + 1));
+    li.innerHTML = `<strong>${esc(displayName)}</strong> <span class="mono">${esc(m.mac || "-")}</span>`;
+    const row = document.createElement("div");
+    row.className = "row";
+    const sendBtn = document.createElement("button");
+    sendBtn.textContent = "Send WOL";
+    sendBtn.onclick = () => runWrap(async () => {
+      await runCmd(`/wol/send/${i}`);
+    });
+    const upBtn = document.createElement("button");
+    upBtn.textContent = "Up";
+    upBtn.onclick = () => runWrap(async () => {
+      await runCmd(`/wol/move/${i}/up`);
+      await refreshState(true);
+      renderAll();
+    });
+    const downBtn = document.createElement("button");
+    downBtn.textContent = "Down";
+    downBtn.onclick = () => runWrap(async () => {
+      await runCmd(`/wol/move/${i}/down`);
+      await refreshState(true);
+      renderAll();
+    });
+    const delBtn = document.createElement("button");
+    delBtn.className = "warn";
+    delBtn.textContent = "Delete";
+    delBtn.onclick = () => runWrap(async () => {
+      await runCmd(`/wol/delete/${i}`);
+      await refreshState(true);
+      renderAll();
+    });
+    row.appendChild(sendBtn);
+    row.appendChild(upBtn);
+    row.appendChild(downBtn);
+    row.appendChild(delBtn);
+    li.appendChild(row);
+    ul.appendChild(li);
+  });
+}
+
+function loadLogs() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOG_STORE_KEY) || "[]");
+    if (Array.isArray(parsed)) logLines = parsed;
+  } catch (_) {
+    logLines = [];
+  }
+}
+
+function saveLogs() {
+  try {
+    localStorage.setItem(LOG_STORE_KEY, JSON.stringify(logLines.slice(-LOG_MAX)));
+  } catch (_) {}
+}
+
+function appendLogsFromState() {
+  if (!state) return;
+  if (state.uptime_s !== undefined && state.uptime_s < 5) {
+    logLines = [];
+    lastLogSeq = 0;
+  }
+  if (!Array.isArray(state.logs) || state.logs.length === 0) return;
+  const firstSeq = Number(state.log_first_seq || 0);
+  let seq = firstSeq;
+  for (const line of state.logs) {
+    if (seq > lastLogSeq) {
+      logLines.push({ s: seq, l: String(line) });
+      lastLogSeq = seq;
+    }
+    seq++;
+  }
+  if (logLines.length > LOG_MAX) {
+    logLines = logLines.slice(logLines.length - LOG_MAX);
+  }
+  saveLogs();
+}
+
+function renderLogs() {
+  const box = $("logBox");
+  if (!box) return;
+  if (!logLines.length) {
+    box.innerHTML = "None";
+    $("logMeta").textContent = "No logs yet";
+    return;
+  }
+  const start = Math.max(0, logLines.length - LOG_RENDER_MAX);
+  const lines = [];
+  for (let i = logLines.length - 1; i >= start; i--) {
+    const row = logLines[i];
+    lines.push(esc(row.l || String(row)));
+  }
+  box.innerHTML = lines.join("<br>");
+  $("logMeta").textContent = `${logLines.length} stored lines`;
+}
+
+function renderControllerPads() {
+  const root = $("controllerPads");
+  if (!root || root.dataset.ready === "1") return;
+  root.dataset.ready = "1";
+  for (let gp = 0; gp < 4; gp++) {
+    const pad = document.createElement("div");
+    pad.className = "pad";
+    const title = document.createElement("h3");
+    title.textContent = `Controller ${gp + 1}`;
+    pad.appendChild(title);
+    const row = document.createElement("div");
+    row.className = "row";
+    VIRTUAL_BUTTONS.forEach(([name, id]) => {
+      const b = document.createElement("button");
+      b.textContent = name;
+      b.onclick = () => runWrap(async () => {
+        await runCmd(`/gp/${gp}/btn/${id}`);
+      });
+      row.appendChild(b);
+    });
+    const reset = document.createElement("button");
+    reset.textContent = "Reset";
+    reset.onclick = () => runWrap(async () => {
+      await runCmd(`/gp/${gp}/reset`);
+    });
+    row.appendChild(reset);
+    pad.appendChild(row);
+    root.appendChild(pad);
+  }
+}
+
 function renderSlots() {
   const list = $("slots");
   list.innerHTML = "";
@@ -847,7 +1079,16 @@ async function reorder(from, to) {
   await refreshState(true);
 }
 
-function renderAll() { updateTop(); renderDevices(); renderPaired(); renderSlots(); }
+function renderAll() {
+  updateTop();
+  renderDevices();
+  renderPaired();
+  renderWiFiClients();
+  renderWol();
+  renderSlots();
+  renderControllerPads();
+  renderLogs();
+}
 
 async function refreshState(full) {
   const via = $("controlVia").value;
@@ -907,6 +1148,9 @@ async function pollTick() {
       return;
     }
     await refreshState(false);
+    if (!logsPaused) {
+      appendLogsFromState();
+    }
     renderAll();
     if (!bleIsConnected() && (effectiveTransport() === "ble" || isMixedContentBlocked())) {
       if (!bleAutoReconnectSupported()) {
@@ -977,10 +1221,26 @@ function renderBleControllers(items) {
 }
 
 async function bleConnect() {
-  const device = await navigator.bluetooth.requestDevice({
-    filters: [{ services: [UUIDS.service] }],
-    optionalServices: [UUIDS.service]
-  });
+  let device = null;
+  try {
+    device = await navigator.bluetooth.requestDevice({
+      filters: [
+        { services: [UUIDS.service] },
+        ...BLE_NAME_PREFIXES.map((namePrefix) => ({ namePrefix })),
+      ],
+      optionalServices: [UUIDS.service],
+    });
+  } catch (e) {
+    // Some adapters/controllers won't expose the custom service UUID in
+    // advertising data. Fall back to a generic chooser.
+    if (!e || e.name !== "NotFoundError") {
+      throw e;
+    }
+    device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [UUIDS.service],
+    });
+  }
   bleManualDisconnect = false;
   await bleAttach(device);
 }
@@ -1035,6 +1295,19 @@ function bind() {
     setError(resp?.reboot ? "Mode switch requested; device will reboot."
                           : "Mode switch requested.");
   });
+  $("usbWakeBtn").onclick = () => runWrap(async () => {
+    await runCmd("/usb/wake");
+  });
+  $("swapOnBtn").onclick = () => runWrap(async () => {
+    await runCmd("/switch/abxy/1");
+    await refreshState(true);
+    renderAll();
+  });
+  $("swapOffBtn").onclick = () => runWrap(async () => {
+    await runCmd("/switch/abxy/0");
+    await refreshState(true);
+    renderAll();
+  });
 
   $("captureBtn").onclick = () => runWrap(async () => {
     captureActive = true;
@@ -1078,6 +1351,22 @@ function bind() {
     renderAll();
   });
 
+  $("wolAddBtn").onclick = () => runWrap(async () => {
+    const name = encodeURIComponent($("wolNameIn").value || "");
+    const mac = encodeURIComponent($("wolMacIn").value || "");
+    await runCmd(`/wol/add?name=${name}&mac=${mac}`);
+    $("wolNameIn").value = "";
+    $("wolMacIn").value = "";
+    await refreshState(true);
+    renderAll();
+  });
+  $("wolSendFirstBtn").onclick = () => runWrap(async () => {
+    await runCmd("/wol/send/0");
+  });
+  $("wolWakeBtn").onclick = () => runWrap(async () => {
+    await runCmd("/usb/wake");
+  });
+
   $("bleConnectBtn").onclick = () => runWrap(bleConnect);
   $("bleDisconnectBtn").onclick = bleDisconnect;
   $("bleRefreshBtn").onclick = () => runWrap(async () => {
@@ -1087,6 +1376,16 @@ function bind() {
       renderAll();
     }
   });
+  $("logPauseBtn").onclick = () => {
+    logsPaused = !logsPaused;
+    $("logPauseBtn").textContent = logsPaused ? "Resume" : "Pause";
+  };
+  $("logClearBtn").onclick = () => {
+    logLines = [];
+    lastLogSeq = 0;
+    saveLogs();
+    renderLogs();
+  };
 
   window.addEventListener("keydown", captureKeyDown, {passive: false});
   window.addEventListener("keyup", captureKeyUp, {passive: false});
@@ -1097,6 +1396,7 @@ function bind() {
 }
 
 bind();
+loadLogs();
 startPolling();
 runWrap(async () => { await bleTryAutoConnect(); });
 setInterval(() => { mkFlushMotion(); }, 20);
