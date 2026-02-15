@@ -90,12 +90,11 @@
             <option value="dinput">dinput</option>
             <option value="ps3">ps3</option>
             <option value="ps4">ps4</option>
-            <option value="ps5">ps5</option>
             <option value="hid">hid</option>
-            <option value="xboxone">xboxone</option>
           </select>
           <button id="modeSetBtn" class="primary">Set Mode</button>
           <button id="usbWakeBtn">Wake Host</button>
+          <button id="usbSleepBtn">Sleep Host</button>
         </div>
         <div class="row" style="margin-top:6px">
           <span>Switch AB/XY: <span id="switchSwapState" class="pill">-</span></span>
@@ -233,7 +232,7 @@
 </main>
 
 <script>
-const MODE_BY_ID = {0:"xinput",1:"hid",2:"switch",3:"dinput",4:"ps3",5:"ps4",6:"ps5",7:"xboxone",8:"xinput"};
+const MODE_BY_ID = {0:"xinput",1:"hid",2:"switch",3:"dinput",4:"ps3",5:"ps4",6:"xinput",7:"xinput",8:"xinput"};
 const UUIDS = {
   service: "4627c4a4-ac00-46b9-b688-afc5c1bf7f63",
   connectedDevices: "4627c4a4-ac05-46b9-b688-afc5c1bf7f63",
@@ -253,6 +252,8 @@ let dragFromSlot = null;
 let httpOnline = false;
 let blePollCounter = 0;
 let logsPaused = false;
+let modeSelectDirty = false;
+let modeSetPending = "";
 
 let bleDevice = null;
 let bleServer = null;
@@ -787,8 +788,15 @@ function updateTop() {
   const mounted = !!state.bt?.usb?.mounted;
   $("usbState").textContent = mounted ? "Mounted" : "Not mounted";
   $("usbState").className = mounted ? "pill ok" : "pill";
-  const mode = MODE_BY_ID[state.bt?.usb?.mode] || "xinput";
-  $("modeSelect").value = mode;
+  const rawMode = state.bt?.usb?.mode;
+  const mode = (typeof rawMode === "string") ? rawMode : (MODE_BY_ID[rawMode] || "xinput");
+  if (modeSetPending && mode === modeSetPending) {
+    modeSetPending = "";
+    modeSelectDirty = false;
+  }
+  if (!modeSelectDirty && !modeSetPending) {
+    $("modeSelect").value = mode;
+  }
   $("modeNow").textContent = `Current: ${mode}`;
   const swap = !!state.bt?.usb?.switch_swap;
   $("switchSwapState").textContent = swap ? "On" : "Off";
@@ -1289,14 +1297,21 @@ function bind() {
   };
   $("testBtn").onclick = () => runWrap(async () => { await refreshState(true); renderAll(); });
   $("pollBtn").onclick = () => pollEnabled ? stopPolling() : startPolling();
+  $("modeSelect").onchange = () => { modeSelectDirty = true; };
 
   $("modeSetBtn").onclick = () => runWrap(async () => {
-    const resp = await runCmd(`/mode/${$("modeSelect").value}`);
+    const targetMode = $("modeSelect").value;
+    modeSetPending = targetMode;
+    modeSelectDirty = false;
+    const resp = await runCmd(`/mode/${targetMode}`);
     setError(resp?.reboot ? "Mode switch requested; device will reboot."
                           : "Mode switch requested.");
   });
   $("usbWakeBtn").onclick = () => runWrap(async () => {
     await runCmd("/usb/wake");
+  });
+  $("usbSleepBtn").onclick = () => runWrap(async () => {
+    await runCmd("/usb/sleep");
   });
   $("swapOnBtn").onclick = () => runWrap(async () => {
     await runCmd("/switch/abxy/1");
