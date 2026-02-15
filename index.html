@@ -6,18 +6,18 @@
   <title>Pico Controller Manager</title>
   <style>
     :root {
-      --bg: #edf2f8;
-      --card: #fff;
-      --line: #d5dfeb;
-      --text: #1f2b3a;
-      --muted: #5e6d83;
-      --accent: #0d62c9;
-      --ok: #0a8a55;
-      --warn: #b93426;
-      --drag: #fff0cf;
+      --bg: #0d1117;
+      --card: #161b22;
+      --line: #2d3643;
+      --text: #e6edf3;
+      --muted: #9fb0c3;
+      --accent: #2f81f7;
+      --ok: #2da44e;
+      --warn: #da3633;
+      --drag: #2b2416;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; background: radial-gradient(circle at top left, #dce8f8, #f7fafd 62%); color: var(--text); font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
+    body { margin: 0; background: radial-gradient(circle at top left, #1a2330, #0d1117 62%); color: var(--text); font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
     main { max-width: 1160px; margin: 0 auto; padding: 10px; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
     h1, h2 { margin: 0 0 8px; }
@@ -31,26 +31,26 @@
     @media (min-width: 1100px) { .grid.three { grid-template-columns: 1fr 1fr 1fr; } }
     input, select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-height: 32px; }
     input[type="text"], input[type="password"] { min-width: 220px; }
-    button { border: 0; border-radius: 8px; padding: 7px 10px; min-height: 32px; cursor: pointer; background: #dfe8f7; font-weight: 600; }
+    button { border: 0; border-radius: 8px; padding: 7px 10px; min-height: 32px; cursor: pointer; background: #263244; color: var(--text); font-weight: 600; }
     button.primary { background: var(--accent); color: #fff; }
     button.ok { background: var(--ok); color: #fff; }
     button.warn { background: var(--warn); color: #fff; }
     button:disabled { opacity: .5; cursor: not-allowed; }
-    .pill { border-radius: 999px; padding: 3px 8px; font-size: .8rem; background: #e6edf7; }
-    .pill.ok { background: #dbf4e8; color: #0e6d45; }
-    .pill.off { background: #f7e3e0; color: #8b2e24; }
+    .pill { border-radius: 999px; padding: 3px 8px; font-size: .8rem; background: #243041; }
+    .pill.ok { background: #173a2a; color: #5ad289; }
+    .pill.off { background: #3d2020; color: #ff9b9b; }
     .mono { font-family: "IBM Plex Mono", monospace; }
-    .error { color: #a52317; font-size: .88rem; }
+    .error { color: #ff8e8e; font-size: .88rem; }
     ul { margin: 8px 0 0; padding-left: 18px; }
     li { margin: 4px 0; }
     .slot-list { list-style: none; padding: 0; margin: 8px 0 0; }
-    .slot-item { border: 1px solid var(--line); border-radius: 8px; background: #f9fcff; padding: 10px; margin-bottom: 8px; cursor: grab; }
+    .slot-item { border: 1px solid var(--line); border-radius: 8px; background: #121820; padding: 10px; margin-bottom: 8px; cursor: grab; }
     .slot-item.over { background: var(--drag); border-color: #d3a039; }
     .slot-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .logbox { border: 1px solid var(--line); border-radius: 8px; background: #f7fbff; max-height: 220px; overflow: auto; padding: 8px; font-size: .8rem; line-height: 1.35; }
+    .logbox { border: 1px solid var(--line); border-radius: 8px; background: #0f141b; max-height: 220px; overflow: auto; padding: 8px; font-size: .8rem; line-height: 1.35; }
     .pads { display: grid; grid-template-columns: 1fr; gap: 8px; }
     @media (min-width: 900px) { .pads { grid-template-columns: 1fr 1fr; } }
-    .pad { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #f9fcff; }
+    .pad { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #121820; }
     .pad h3 { margin: 0 0 6px; font-size: .95rem; }
     .pad .row button { padding: 5px 8px; min-height: 28px; font-size: .82rem; }
   </style>
@@ -150,7 +150,7 @@
       <input id="mkTextIn" type="text" placeholder="Type text to send">
       <button id="mkSendTextBtn" class="primary">Send Text</button>
     </div>
-    <div id="touchpad" style="margin-top:10px; border:1px solid var(--line); border-radius:10px; height:170px; background:#f4f8ff; display:flex; align-items:center; justify-content:center; user-select:none; touch-action:none;">
+    <div id="touchpad" style="margin-top:10px; border:1px solid var(--line); border-radius:10px; height:170px; background:#111824; display:flex; align-items:center; justify-content:center; user-select:none; touch-action:none;">
       Touchpad: drag to move pointer, two-finger vertical drag to scroll
     </div>
   </div>
@@ -181,6 +181,10 @@
         <button id="autoOffBtn">Auto Off</button>
         <button id="showOnBtn">Show-All On</button>
         <button id="showOffBtn">Show-All Off</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="routeC1OnBtn">Route All->C1 On</button>
+        <button id="routeC1OffBtn">Route All->C1 Off</button>
       </div>
       <div class="row" style="margin-top:8px">
         <button id="pairListBtn">List Pairings</button>
@@ -536,13 +540,50 @@ async function bleTryAutoConnect() {
 }
 
 function mergeBleState(status, slots, devices, paired) {
+  const slotRows = Array.isArray(slots?.slots) ? slots.slots : [];
+  const fallbackOutputs = new Array(4).fill(null).map((_, i) => ({
+    slot: i,
+    connected: 0,
+    src: "none",
+    sid: i,
+    ble: 0,
+    last_s: 0,
+    name: "",
+    addr: "",
+  }));
+  slotRows.forEach((s) => {
+    const map = Number(s?.map);
+    if (!Number.isFinite(map) || map < 0 || map > 3 || !s?.connected) return;
+    const src = s?.src || "bt";
+    const cur = fallbackOutputs[map];
+    const next = {
+      slot: map,
+      connected: 1,
+      src,
+      sid: Number.isFinite(Number(s?.id)) ? Number(s.id) : map,
+      ble: s?.ble ? 1 : 0,
+      last_s: Number(s?.last_s || 0),
+      name: s?.name || (src === "wifi" ? "WiFi Controller" : "BT Controller"),
+      addr: s?.addr || "",
+    };
+    if (!cur.connected || (cur.src !== "wifi" && next.src === "wifi")) {
+      fallbackOutputs[map] = next;
+    }
+  });
+  const outputs = Array.isArray(status?.bt?.outputs) && status.bt.outputs.length
+    ? status.bt.outputs
+    : fallbackOutputs;
+
   const bt = {
     scan: !!status?.bt?.scan,
     show_all: !!status?.bt?.show_all,
     auto: !!status?.bt?.auto,
     pairing: !!status?.bt?.pairing,
+    assist: !!status?.bt?.assist,
+    assist_left_ms: Number(status?.bt?.assist_left_ms || 0),
     usb: status?.usb || {},
-    slots: slots?.slots || [],
+    outputs,
+    slots: slotRows,
     devices: devices?.devices || state?.bt?.devices || [],
     paired: paired?.paired || state?.bt?.paired || [],
   };
@@ -839,7 +880,7 @@ function updateTop() {
   const swap = !!state.bt?.usb?.switch_swap;
   $("switchSwapState").textContent = swap ? "On" : "Off";
   $("switchSwapState").className = swap ? "pill ok" : "pill";
-  $("btFlags").textContent = `Scan: ${state.bt?.scan ? "On" : "Off"} | Auto: ${state.bt?.auto ? "On" : "Off"} | Show-All: ${state.bt?.show_all ? "On" : "Off"}`;
+  $("btFlags").textContent = `Scan: ${state.bt?.scan ? "On" : "Off"} | Auto: ${state.bt?.auto ? "On" : "Off"} | Show-All: ${state.bt?.show_all ? "On" : "Off"} | Route C1: ${state.bt?.route_c1 ? "On" : "Off"}`;
   $("wifiSsid").textContent = state.wifi?.sta_ssid || "-";
   const sta = !!state.wifi?.sta_connected;
   $("wifiSta").textContent = sta ? "Connected" : "Disconnected";
@@ -1422,6 +1463,8 @@ function bind() {
   $("scanClearBtn").onclick = () => runWrap(async () => { await runCmd("/bt/scan/clear"); await refreshState(true); renderAll(); });
   $("autoOnBtn").onclick = () => runWrap(async () => { await runCmd("/bt/autoconnect/1"); await refreshState(true); renderAll(); });
   $("autoOffBtn").onclick = () => runWrap(async () => { await runCmd("/bt/autoconnect/0"); await refreshState(true); renderAll(); });
+  $("routeC1OnBtn").onclick = () => runWrap(async () => { await runCmd("/bt/route_c1/1"); await refreshState(true); renderAll(); });
+  $("routeC1OffBtn").onclick = () => runWrap(async () => { await runCmd("/bt/route_c1/0"); await refreshState(true); renderAll(); });
   $("showOnBtn").onclick = () => runWrap(async () => { await runCmd("/bt/showall/1"); await refreshState(true); renderAll(); });
   $("showOffBtn").onclick = () => runWrap(async () => { await runCmd("/bt/showall/0"); await refreshState(true); renderAll(); });
   $("pairListBtn").onclick = () => runWrap(async () => { await runCmd("/bt/listpair"); await refreshState(true); renderAll(); });
