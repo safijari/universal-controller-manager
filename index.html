@@ -262,6 +262,7 @@ let bleOpQueue = Promise.resolve();
 let bleManualDisconnect = false;
 let bleAutoReconnectTimer = null;
 let bleLastAutoAttemptMs = 0;
+let bleReconnectBackoffMs = 1200;
 const BLE_LAST_DEVICE_KEY = "pico_manager_ble_device_id";
 const LOG_STORE_KEY = "pico_manager_logs_v2";
 const LOG_MAX = 2000;
@@ -288,10 +289,45 @@ function clearBleAutoReconnectTimer() {
 }
 
 function scheduleBleAutoReconnect(delayMs = 1500) {
+  if (bleManualDisconnect) return;
   clearBleAutoReconnectTimer();
-  bleAutoReconnectTimer = setTimeout(() => {
-    runWrap(async () => { await bleTryAutoConnect(); });
-  }, delayMs);
+  bleAutoReconnectTimer = setTimeout(bleAutoReconnectTick, Math.max(250, delayMs | 0));
+}
+
+async function bleAutoReconnectTick() {
+  if (bleManualDisconnect || bleIsConnected()) {
+    clearBleAutoReconnectTimer();
+    return;
+  }
+  if (!bleAutoReconnectSupported()) return;
+
+  const now = Date.now();
+  if ((now - bleLastAutoAttemptMs) < 300) {
+    scheduleBleAutoReconnect(300);
+    return;
+  }
+  bleLastAutoAttemptMs = now;
+
+  let ok = false;
+  try {
+    ok = await bleTryAutoConnect();
+  } catch (_) {
+    ok = false;
+  }
+
+  if (ok) {
+    bleReconnectBackoffMs = 1200;
+    setError("");
+    try {
+      await refreshState(true);
+      renderAll();
+      await bleRefreshPanel();
+    } catch (_) {}
+    return;
+  }
+
+  bleReconnectBackoffMs = Math.min(15000, Math.floor(bleReconnectBackoffMs * 1.6));
+  scheduleBleAutoReconnect(bleReconnectBackoffMs);
 }
 
 function setError(msg) { $("error").textContent = msg || ""; }
@@ -417,13 +453,15 @@ function onBleDisconnected() {
   bleServer = null;
   bleChars = {};
   if (!bleManualDisconnect) {
-    scheduleBleAutoReconnect(1200);
+    bleReconnectBackoffMs = 1200;
+    scheduleBleAutoReconnect(bleReconnectBackoffMs);
   }
 }
 
 async function bleAttach(device) {
   if (!device) throw new Error("No BLE device");
   clearBleAutoReconnectTimer();
+  bleReconnectBackoffMs = 1200;
 
   if (bleDevice && bleDevice !== device) {
     bleDevice.removeEventListener("gattserverdisconnected", onBleDisconnected);
@@ -1056,16 +1094,53 @@ function renderControllerPads() {
 function renderSlots() {
   const list = $("slots");
   list.innerHTML = "";
-  const slots = [...(state?.bt?.slots || [])].sort((a,b) => (a.map - b.map) || (a.id - b.id));
-  if (!slots.length) { list.innerHTML = "<li>None</li>"; return; }
-  slots.forEach((s) => {
+  let outputs = state?.bt?.outputs;
+  if (!Array.isArray(outputs) || !outputs.length) {
+    // BLE merged state may not include canonical outputs; derive them from slots.
+    const fromSlots = Array.isArray(state?.bt?.slots) ? state.bt.slots : [];
+    const bySlot = new Array(4).fill(null).map((_, i) => ({
+      slot: i,
+      connected: 0,
+      src: "none",
+      sid: i,
+      ble: 0,
+      last_s: 0,
+      name: "",
+      addr: "",
+    }));
+    fromSlots.forEach((s) => {
+      const map = Number(s?.map);
+      if (!Number.isFinite(map) || map < 0 || map > 3 || !s?.connected) return;
+      const cur = bySlot[map];
+      const src = s?.src || "bt";
+      const next = {
+        slot: map,
+        connected: 1,
+        src,
+        sid: Number.isFinite(Number(s?.id)) ? Number(s.id) : map,
+        ble: s?.ble ? 1 : 0,
+        last_s: Number(s?.last_s || 0),
+        name: s?.name || (src === "wifi" ? "WiFi Controller" : "BT Controller"),
+        addr: s?.addr || "",
+      };
+      // Prefer WiFi row if mixed duplicates exist in fallback path.
+      if (!cur.connected || (cur.src !== "wifi" && next.src === "wifi")) {
+        bySlot[map] = next;
+      }
+    });
+    outputs = bySlot;
+  }
+  outputs = [...outputs].sort((a,b) => (a.slot - b.slot));
+  if (!outputs.length) { list.innerHTML = "<li>None</li>"; return; }
+  outputs.forEach((s) => {
     const li = document.createElement("li");
     li.className = "slot-item";
-    li.draggable = true;
-    li.dataset.slotId = String(s.id);
+    li.draggable = !!s.connected;
+    li.dataset.slotId = String(s.slot);
     const name = (s.name || "").trim() || "Unknown";
-    li.innerHTML = `<div class="slot-top"><strong>Slot ${s.map + 1}: ${s.connected ? esc(name) : "Empty"}</strong><span class="pill ${s.connected ? "ok" : ""}">${s.connected ? "Connected" : "Empty"}</span></div><div class="small">${s.connected ? `${s.ble ? "BLE" : "Classic"} ${esc(s.addr)} | last ${s.last_s}s` : "No controller"}</div>`;
-    li.addEventListener("dragstart", () => { dragFromSlot = Number(li.dataset.slotId); });
+    const src = s.src === "wifi" ? "WiFi" : (s.src === "bt" ? (s.ble ? "BLE" : "Classic BT") : "None");
+    li.innerHTML = `<div class="slot-top"><strong>Slot ${s.slot + 1}: ${s.connected ? esc(name) : "Empty"}</strong><span class="pill ${s.connected ? "ok" : ""}">${s.connected ? "Connected" : "Empty"}</span></div><div class="small">${s.connected ? `${src} ${esc(s.addr)} | last ${s.last_s}s` : "No controller"}</div>`;
+    li.addEventListener("dragstart", () => { dragFromSlot = s.connected ? Number(li.dataset.slotId) : null; });
     li.addEventListener("dragover", (e) => { e.preventDefault(); li.classList.add("over"); });
     li.addEventListener("dragleave", () => li.classList.remove("over"));
     li.addEventListener("drop", (e) => {
@@ -1080,9 +1155,9 @@ function renderSlots() {
 async function reorder(from, to) {
   if (from == null || to == null || from === to) return;
   if (to > from) {
-    for (let i = from; i < to; i++) await runCmd(`/bt/order/${i}/down`);
+    for (let i = from; i < to; i++) await runCmd(`/bt/order_output/${i}/down`);
   } else {
-    for (let i = from; i > to; i--) await runCmd(`/bt/order/${i}/up`);
+    for (let i = from; i > to; i--) await runCmd(`/bt/order_output/${i}/up`);
   }
   await refreshState(true);
 }
@@ -1261,7 +1336,6 @@ function bleDisconnect() {
   renderBleControllers([]);
   bleServer = null;
   bleChars = {};
-  setTimeout(() => { bleManualDisconnect = false; }, 400);
 }
 
 async function bleRefreshPanel() {
